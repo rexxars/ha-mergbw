@@ -38,6 +38,10 @@ However, I only have access to the Hexagon Lights, so those are the only ones ac
 
 ### HACS (Recommended)
 
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=rexxars&repository=ha-mergbw&category=Integration)
+
+### HACS (Manual)
+
 1. Open HACS in Home Assistant
 2. Click the three dots in the top right corner
 3. Select "Custom repositories"
