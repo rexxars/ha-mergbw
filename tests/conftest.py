@@ -4,25 +4,11 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-# Add the repo root to sys.path so the mergbw package can be imported.
-# This works whether the repo is:
-#   1. Cloned standalone as `ha-mergbw/` (tests run from repo root)
-#   2. Inside a HA config at `custom_components/mergbw/`
-#
-# Structure: tests/conftest.py -> repo root
+# Add repo root to sys.path so custom_components.mergbw can be imported.
+# Structure: tests/conftest.py -> repo root (which contains custom_components/)
 REPO_ROOT = Path(__file__).parent.parent
-
-# For standalone repo case (e.g., GitHub Actions), add repo root itself
-# so we can import directly from const, light, etc.
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
-
-# Also support the custom_components structure for HA development
-CUSTOM_COMPONENTS_DIR = REPO_ROOT.parent
-if CUSTOM_COMPONENTS_DIR.name == "custom_components":
-    HA_CONFIG_DIR = CUSTOM_COMPONENTS_DIR.parent
-    if str(HA_CONFIG_DIR) not in sys.path:
-        sys.path.insert(0, str(HA_CONFIG_DIR))
 
 from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -35,22 +21,7 @@ from homeassistant.components.bluetooth import BluetoothServiceInfoBleak
 from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 
-# Import from the package - works in multiple configurations:
-# 1. HA dev setup: custom_components.mergbw
-# 2. Standalone repo named 'mergbw': mergbw.const
-# 3. Standalone repo (e.g., 'ha-mergbw'): direct import from const
-# We also track the module prefix for use in patches
-_MODULE_PREFIX = None
-try:
-    from custom_components.mergbw.const import DOMAIN
-    _MODULE_PREFIX = "custom_components.mergbw"
-except ImportError:
-    try:
-        from mergbw.const import DOMAIN
-        _MODULE_PREFIX = "mergbw"
-    except ImportError:
-        from const import DOMAIN
-        _MODULE_PREFIX = ""
+from custom_components.mergbw.const import DOMAIN
 
 # Test device constants
 TEST_ADDRESS = "AA:BB:CC:DD:EE:FF"
@@ -142,13 +113,9 @@ def mock_config_entry() -> MagicMock:
 @pytest.fixture
 def mock_bleak_client() -> Generator[MagicMock, None, None]:
     """Mock BleakClient for connection tests."""
-    # Build the patch path based on how the module was imported
-    patch_target = (
-        f"{_MODULE_PREFIX}.protocol.establish_connection"
-        if _MODULE_PREFIX
-        else "protocol.establish_connection"
-    )
-    with patch(patch_target) as mock_establish:
+    with patch(
+        "custom_components.mergbw.protocol.establish_connection"
+    ) as mock_establish:
         mock_client = MagicMock()
         mock_client.is_connected = True
         mock_client.services = []

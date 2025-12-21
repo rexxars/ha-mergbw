@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -e
+
+cd "$(dirname "$0")/.."
+
+# Create config directory if it doesn't exist
+if [ ! -d "config" ]; then
+    mkdir -p config
+    hass --config "${PWD}/config" --script ensure_config
+fi
+
+# Add custom_components to PYTHONPATH so Home Assistant can find the integration
+export PYTHONPATH="${PYTHONPATH}:${PWD}"
+
+# Start Home Assistant with debug logging
+hass --config "${PWD}/config" --debug

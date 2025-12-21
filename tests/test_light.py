@@ -20,23 +20,9 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, State
 
-# Support multiple configurations:
-# 1. HA dev setup: custom_components.mergbw
-# 2. Standalone repo named 'mergbw': mergbw.light
-# 3. Standalone repo (e.g., 'ha-mergbw'): direct import from light
-try:
-    from custom_components.mergbw.light import MeRGBWLight
-    from custom_components.mergbw.protocol import DeviceState, MeRGBWDevice
-    from custom_components.mergbw.const import DOMAIN
-except ImportError:
-    try:
-        from mergbw.light import MeRGBWLight
-        from mergbw.protocol import DeviceState, MeRGBWDevice
-        from mergbw.const import DOMAIN
-    except ImportError:
-        from light import MeRGBWLight
-        from protocol import DeviceState, MeRGBWDevice
-        from const import DOMAIN
+from custom_components.mergbw.light import MeRGBWLight
+from custom_components.mergbw.protocol import DeviceState, MeRGBWDevice
+from custom_components.mergbw.const import DOMAIN
 
 from .conftest import TEST_ADDRESS, TEST_NAME, TEST_DEVICE_TYPE, TEST_MODEL
 

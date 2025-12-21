@@ -217,3 +217,6 @@ ME-RGBW.md
 
 # uv lock file (not needed for custom component)
 uv.lock
+
+# Local Home Assistant config directory (for development)
+config/
