@@ -73,6 +73,9 @@ jobs:
               f.write('\n')
           "
 
+      - name: Clean up venv before Hassfest
+        run: rm -rf .venv
+
       - name: Validate with Hassfest
         uses: home-assistant/actions/hassfest@master
 
