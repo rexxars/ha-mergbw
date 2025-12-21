@@ -220,3 +220,6 @@ uv.lock
 
 # Local Home Assistant config directory (for development)
 config/
+
+# MacOS
+.DS_Store
