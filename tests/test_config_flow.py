@@ -11,13 +11,20 @@ from homeassistant.const import CONF_ADDRESS
 from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 
-# Support both standalone repo and custom_components structure
+# Support multiple configurations:
+# 1. HA dev setup: custom_components.mergbw
+# 2. Standalone repo named 'mergbw': mergbw.const
+# 3. Standalone repo (e.g., 'ha-mergbw'): direct import from const
 try:
     from custom_components.mergbw.const import DOMAIN
     from custom_components.mergbw.config_flow import parse_advertisement
 except ImportError:
-    from mergbw.const import DOMAIN
-    from mergbw.config_flow import parse_advertisement
+    try:
+        from mergbw.const import DOMAIN
+        from mergbw.config_flow import parse_advertisement
+    except ImportError:
+        from const import DOMAIN
+        from config_flow import parse_advertisement
 
 from .conftest import (
     TEST_ADDRESS,
@@ -97,7 +104,10 @@ class TestConfigFlowUnit:
         try:
             from custom_components.mergbw.config_flow import MeRGBWConfigFlow
         except ImportError:
-            from mergbw.config_flow import MeRGBWConfigFlow
+            try:
+                from mergbw.config_flow import MeRGBWConfigFlow
+            except ImportError:
+                from config_flow import MeRGBWConfigFlow
 
         flow = MeRGBWConfigFlow()
         assert flow.VERSION == 1

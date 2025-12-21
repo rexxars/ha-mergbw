@@ -3,7 +3,10 @@ from __future__ import annotations
 
 import pytest
 
-# Support both standalone repo and custom_components structure
+# Support multiple configurations:
+# 1. HA dev setup: custom_components.mergbw
+# 2. Standalone repo named 'mergbw': mergbw.protocol
+# 3. Standalone repo (e.g., 'ha-mergbw'): direct import from protocol
 try:
     from custom_components.mergbw.protocol import (
         build_packet,
@@ -21,21 +24,38 @@ try:
         CMD_SET_BRIGHTNESS,
     )
 except ImportError:
-    from mergbw.protocol import (
-        build_packet,
-        calculate_checksum,
-        validate_response,
-        rgb_to_hsv_payload,
-        DeviceState,
-    )
-    from mergbw.const import (
-        HEADER_CMD,
-        HEADER_RSP,
-        CMD_POWER,
-        CMD_SYNC_STATUS,
-        CMD_SET_COLOR,
-        CMD_SET_BRIGHTNESS,
-    )
+    try:
+        from mergbw.protocol import (
+            build_packet,
+            calculate_checksum,
+            validate_response,
+            rgb_to_hsv_payload,
+            DeviceState,
+        )
+        from mergbw.const import (
+            HEADER_CMD,
+            HEADER_RSP,
+            CMD_POWER,
+            CMD_SYNC_STATUS,
+            CMD_SET_COLOR,
+            CMD_SET_BRIGHTNESS,
+        )
+    except ImportError:
+        from protocol import (
+            build_packet,
+            calculate_checksum,
+            validate_response,
+            rgb_to_hsv_payload,
+            DeviceState,
+        )
+        from const import (
+            HEADER_CMD,
+            HEADER_RSP,
+            CMD_POWER,
+            CMD_SYNC_STATUS,
+            CMD_SET_COLOR,
+            CMD_SET_BRIGHTNESS,
+        )
 
 
 class TestChecksum:
