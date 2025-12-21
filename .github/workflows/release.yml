@@ -1,9 +1,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., v1.0.0, v1.0.0-beta.1)'
+        required: true
+        type: string
 
 jobs:
   release:
@@ -13,6 +16,31 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Validate version format
+        id: validate_version
+        run: |
+          VERSION="${{ inputs.version }}"
+
+          # Check if version starts with 'v'
+          if [[ ! "$VERSION" =~ ^v ]]; then
+            echo "Error: Version must start with 'v' (e.g., v1.0.0)"
+            exit 1
+          fi
+
+          # Extract version without 'v' prefix
+          VERSION_NUM="${VERSION#v}"
+
+          # Validate semver format (with optional prerelease suffix)
+          if [[ ! "$VERSION_NUM" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "Error: Invalid version format. Expected: vX.Y.Z or vX.Y.Z-prerelease (e.g., v1.0.0, v1.0.0-beta.1)"
+            exit 1
+          fi
+
+          echo "VERSION_NUM=$VERSION_NUM" >> $GITHUB_OUTPUT
+          echo "Valid version: $VERSION"
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,7 +50,7 @@ jobs:
       - name: Install uv
         uses: astral-sh/setup-uv@v4
 
-      - name: Install dependencies and run tests
+      - name: Install dependencies
         run: |
           uv venv
           uv pip install -r requirements_test.txt
@@ -33,18 +61,33 @@ jobs:
           source .venv/bin/activate
           pytest tests/ -v --tb=short
 
-      - name: Get version from tag
-        id: get_version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Verify manifest version matches tag
+      - name: Update manifest.json version
         run: |
-          MANIFEST_VERSION=$(python3 -c "import json; print(json.load(open('custom_components/mergbw/manifest.json'))['version'])")
-          TAG_VERSION="${{ steps.get_version.outputs.VERSION }}"
-          if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
-            echo "Error: manifest.json version ($MANIFEST_VERSION) does not match tag version ($TAG_VERSION)"
-            exit 1
-          fi
+          python3 -c "
+          import json
+          with open('custom_components/mergbw/manifest.json', 'r') as f:
+              manifest = json.load(f)
+          manifest['version'] = '${{ steps.validate_version.outputs.VERSION_NUM }}'
+          with open('custom_components/mergbw/manifest.json', 'w') as f:
+              json.dump(manifest, f, indent=2)
+              f.write('\n')
+          "
+
+      - name: Validate with Hassfest
+        uses: home-assistant/actions/hassfest@master
+
+      - name: Commit version update
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add custom_components/mergbw/manifest.json
+          git commit -m "feat: ${{ inputs.version }}"
+          git push
+
+      - name: Create and push tag
+        run: |
+          git tag ${{ inputs.version }}
+          git push origin ${{ inputs.version }}
 
       - name: Create zip for manual installation
         run: |
@@ -54,8 +97,9 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: v${{ steps.get_version.outputs.VERSION }}
+          tag_name: ${{ inputs.version }}
+          name: ${{ inputs.version }}
           generate_release_notes: true
           draft: false
-          prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'b') || contains(steps.get_version.outputs.VERSION, 'rc') }}
+          prerelease: ${{ contains(inputs.version, 'beta') || contains(inputs.version, 'rc') || contains(inputs.version, 'alpha') }}
           files: mergbw.zip
