@@ -22,7 +22,7 @@ DEVICE_TYPE_CEILING_COLORFUL: Final = 7
 DEVICE_TYPE_CEILING_RGB: Final = 8
 
 DEVICE_TYPE_NAMES: Final = {
-    1: "Letters Lights",
+    1: "Hexagon/Letters Lights",
     2: "RGB Line/Strip",
     3: "Star Lights",
     4: "Handle Lights",

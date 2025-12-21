@@ -91,6 +91,15 @@ class TestMeRGBWLightInit:
         assert device_info["name"] == TEST_NAME
         assert device_info["manufacturer"] == "MeRGBW"
         assert device_info["model"] == TEST_MODEL
+        assert device_info["hw_version"] == "RGB Line/Strip"  # Type 2 default
+
+    def test_light_extra_state_attributes(self, mock_device, mock_entry):
+        """Test light entity extra state attributes."""
+        light = MeRGBWLight(mock_device, mock_entry)
+
+        attrs = light.extra_state_attributes
+        assert attrs["device_type"] == TEST_DEVICE_TYPE
+        assert attrs["device_type_name"] == "RGB Line/Strip"
 
 
 class TestMeRGBWLightState:

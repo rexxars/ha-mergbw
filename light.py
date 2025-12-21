@@ -16,7 +16,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, DEVICE_TYPE_NAMES
 from .protocol import MeRGBWDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -56,14 +56,16 @@ class MeRGBWLight(RestoreEntity, LightEntity):
         self._ble_available = True
         self._connected = False
 
-        device_type = entry.data.get("device_type", 2)
+        self._device_type = entry.data.get("device_type", 2)
         model = entry.data.get("model", "")
+        self._device_type_name = DEVICE_TYPE_NAMES.get(self._device_type, f"Type {self._device_type}")
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, device.address)},
             name=device.name,
             manufacturer="MeRGBW",
             model=model or "Unknown",
+            hw_version=self._device_type_name,
         )
 
     async def async_added_to_hass(self) -> None:
@@ -152,6 +154,14 @@ class MeRGBWLight(RestoreEntity, LightEntity):
         """Return the rgb color value."""
         state = self._device.state
         return (state.red, state.green, state.blue)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return extra state attributes."""
+        return {
+            "device_type": self._device_type,
+            "device_type_name": self._device_type_name,
+        }
 
     async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the light on."""
