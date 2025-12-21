@@ -46,6 +46,11 @@ jobs:
             exit 1
           fi
 
+      - name: Create zip for manual installation
+        run: |
+          cd custom_components
+          zip -r ../mergbw.zip mergbw
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
@@ -53,3 +58,4 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(steps.get_version.outputs.VERSION, 'b') || contains(steps.get_version.outputs.VERSION, 'rc') }}
+          files: mergbw.zip
