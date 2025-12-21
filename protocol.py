@@ -102,6 +102,7 @@ class MeRGBWDevice:
         self._last_response: bytes = b""
         self._lock = asyncio.Lock()
         self._disconnect_callbacks: list[Callable[[], None]] = []
+        self._available_callbacks: list[Callable[[], None]] = []
 
     @property
     def address(self) -> str:
@@ -123,6 +124,22 @@ class MeRGBWDevice:
 
     def register_disconnect_callback(self, callback: Callable[[], None]) -> None:
         self._disconnect_callbacks.append(callback)
+
+    def register_available_callback(self, callback: Callable[[], None]) -> None:
+        """Register callback for when device becomes available again."""
+        self._available_callbacks.append(callback)
+
+    def update_ble_device(self, ble_device: BLEDevice) -> None:
+        """Update the BLE device reference when HA discovers an update.
+
+        This is called when the device is rediscovered after going out of range,
+        providing a fresh BLEDevice object for reconnection.
+        """
+        self._ble_device = ble_device
+        _LOGGER.debug("Updated BLE device reference for %s", self.address)
+        # Notify listeners that device is available for connection
+        for callback in self._available_callbacks:
+            callback()
 
     def _handle_disconnect(self, client: BleakClient) -> None:
         _LOGGER.debug("Device %s disconnected", self.address)
@@ -217,25 +234,50 @@ class MeRGBWDevice:
         return None
 
     async def sync_status(self) -> bool:
-        """Sync device status."""
+        """Sync device status.
+
+        Response format for types 1/2/4 (addressable devices):
+        - Byte 4: Power state (0x01=ON, 0x00=OFF)
+        - Bytes 5-6: Brightness (big-endian)
+        - Bytes 7-10: Open alarm data
+        - Bytes 11-14: Close alarm data
+        - Bytes 15-16: LED count (big-endian)
+        - Byte 17: Music sensitivity
+        """
         response = await self._send_command(CMD_SYNC_STATUS)
         if not response or len(response) < 5:
+            _LOGGER.warning("No response or too short response from SYNC_STATUS")
             return False
 
-        # Parse response based on device type
-        # Basic parsing - byte 4 is power state
-        self._state.power = response[4] == 0x01
-        
-        if len(response) >= 7:
-            # Bytes 5-6 are brightness (big-endian)
-            brightness_raw = (response[5] << 8) | response[6]
-            if self._state.device_type in TWO_BYTE_BRIGHTNESS_TYPES:
-                self._state.brightness = (brightness_raw // 10) - 5
-            else:
-                self._state.brightness = brightness_raw - 5
-            self._state.brightness = max(0, min(100, self._state.brightness))
+        # Log full response for debugging
+        _LOGGER.debug("SYNC_STATUS response (%d bytes): %s", len(response), response.hex())
 
-        _LOGGER.debug("Synced state: power=%s, brightness=%d", self._state.power, self._state.brightness)
+        # Parse response - byte 4 is power state (payload byte 0)
+        self._state.power = response[4] == 0x01
+
+        # Parse brightness - format varies by device type
+        if self._state.device_type in TWO_BYTE_BRIGHTNESS_TYPES:
+            # Types 1, 2, 4: 2-byte brightness at bytes 5-6 (big-endian)
+            # Formula: (value / 10) - 5
+            if len(response) >= 7:
+                brightness_raw = (response[5] << 8) | response[6]
+                self._state.brightness = (brightness_raw // 10) - 5
+        else:
+            # Types 3, 5, 6, 7, 8: Likely 1-byte brightness at byte 5
+            # Formula: value - 5 (mirrors the command format)
+            if len(response) >= 6:
+                brightness_raw = response[5]
+                self._state.brightness = brightness_raw - 5
+        self._state.brightness = max(0, min(100, self._state.brightness))
+
+        # Parse LED count for addressable devices (bytes 15-16)
+        if len(response) >= 17:
+            led_count = (response[15] << 8) | response[16]
+            self._state.led_count = led_count
+            _LOGGER.info("Device reports LED/segment count: %d", led_count)
+
+        _LOGGER.debug("Synced state: power=%s, brightness=%d, led_count=%d",
+                     self._state.power, self._state.brightness, self._state.led_count)
         return True
 
     async def set_power(self, on: bool) -> bool:
