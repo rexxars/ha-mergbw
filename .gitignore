@@ -211,3 +211,9 @@ __marimo__/
 CLAUDE.md
 JS-REFERENCE-IMPL
 ME-RGBW.md
+
+# Test artifacts
+.pytest_cache/
+
+# uv lock file (not needed for custom component)
+uv.lock
