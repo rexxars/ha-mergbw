@@ -134,13 +134,22 @@ class MeRGBWConfigFlow(ConfigFlow, domain=DOMAIN):
         if self._discovery_info is None:
             return self.async_abort(reason="not_supported")
 
-        # Skip confirmation dialog and create entry immediately
-        return self.async_create_entry(
-            title=self._discovery_info["name"] or "MeRGBW Light",
-            data={
-                CONF_ADDRESS: self._discovery_info["address"],
-                "device_type": self._discovery_info["device_type"],
-                "model": self._discovery_info["model"],
+        if user_input is not None:
+            return self.async_create_entry(
+                title=self._discovery_info["name"] or "MeRGBW Light",
+                data={
+                    CONF_ADDRESS: self._discovery_info["address"],
+                    "device_type": self._discovery_info["device_type"],
+                    "model": self._discovery_info["model"],
+                },
+            )
+
+        self._set_confirm_only()
+        return self.async_show_form(
+            step_id="bluetooth_confirm",
+            description_placeholders={
+                "name": self._discovery_info["name"] or "MeRGBW Light",
+                "model": self._discovery_info["model"] or "Unknown",
             },
         )
 
