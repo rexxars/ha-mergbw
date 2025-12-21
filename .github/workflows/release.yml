@@ -42,6 +42,14 @@ jobs:
           echo "VERSION_NUM=$VERSION_NUM" >> $GITHUB_OUTPUT
           echo "Valid version: $VERSION"
 
+      - name: Check tag doesn't already exist
+        run: |
+          if git ls-remote --tags origin | grep -q "refs/tags/${{ inputs.version }}$"; then
+            echo "Error: Tag ${{ inputs.version }} already exists"
+            exit 1
+          fi
+          echo "Tag ${{ inputs.version }} is available"
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
