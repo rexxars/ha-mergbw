@@ -105,12 +105,29 @@ jobs:
           cd custom_components
           zip -r ../mergbw.zip mergbw
 
+      - name: Check for previous tags
+        id: check_tags
+        run: |
+          TAG_COUNT=$(git tag | wc -l)
+          echo "tag_count=$TAG_COUNT" >> $GITHUB_OUTPUT
+
+      - name: Generate changelog
+        id: changelog
+        if: steps.check_tags.outputs.tag_count > 1
+        uses: requarks/changelog-action@v1
+        with:
+          token: ${{ github.token }}
+          tag: ${{ inputs.version }}
+          excludeTypes: build,docs,chore,style,refactor,perf,test,ci
+          writeToFile: false
+          useGitmojis: false
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ inputs.version }}
           name: ${{ inputs.version }}
-          generate_release_notes: true
+          body: ${{ steps.changelog.outputs.changes || 'Initial release' }}
           draft: false
           prerelease: ${{ contains(inputs.version, 'beta') || contains(inputs.version, 'rc') || contains(inputs.version, 'alpha') }}
           files: mergbw.zip
