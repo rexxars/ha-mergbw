@@ -1,17 +1,17 @@
 {
   "domain": "mergbw",
   "name": "MeRGBW",
-  "version": "0.1.0",
-  "codeowners": ["@rexxars"],
-  "config_flow": true,
-  "documentation": "https://github.com/rexxars/ha-mergbw",
-  "issue_tracker": "https://github.com/rexxars/ha-mergbw/issues",
-  "iot_class": "local_push",
   "bluetooth": [
     {
       "service_uuid": "00003519-0000-1000-8000-00805f9b34fb"
     }
   ],
+  "codeowners": ["@rexxars"],
+  "config_flow": true,
   "dependencies": ["bluetooth_adapters"],
-  "requirements": ["bleak>=0.21.0"]
+  "documentation": "https://github.com/rexxars/ha-mergbw",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/rexxars/ha-mergbw/issues",
+  "requirements": ["bleak>=0.21.0"],
+  "version": "0.1.0"
 }
