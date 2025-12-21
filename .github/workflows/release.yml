@@ -39,7 +39,7 @@ jobs:
 
       - name: Verify manifest version matches tag
         run: |
-          MANIFEST_VERSION=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+          MANIFEST_VERSION=$(python3 -c "import json; print(json.load(open('custom_components/mergbw/manifest.json'))['version'])")
           TAG_VERSION="${{ steps.get_version.outputs.VERSION }}"
           if [ "$MANIFEST_VERSION" != "$TAG_VERSION" ]; then
             echo "Error: manifest.json version ($MANIFEST_VERSION) does not match tag version ($TAG_VERSION)"
