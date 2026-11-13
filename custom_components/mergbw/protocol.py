@@ -1,3 +1,4 @@
+
 """MeRGBW Bluetooth protocol implementation."""
 from __future__ import annotations
 
@@ -29,12 +30,15 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
+
 # Device types that use HSV color format (addressable LED devices)
 HSV_COLOR_TYPES = {1, 2, 4}  # Letters, RGB Line, Handle
+
 
 def calculate_checksum(data: bytes) -> int:
     """Calculate checksum for packet."""
     return (~sum(data)) & 0xFF
+
 
 def build_packet(command: int, payload: bytes = b"") -> bytes:
     """Build a command packet.
@@ -44,6 +48,7 @@ def build_packet(command: int, payload: bytes = b"") -> bytes:
     length = 5 + len(payload)  # header(1) + cmd(1) + seq(1) + length(1) + payload(N) + checksum(1)
     packet = bytes([HEADER_CMD, command, SEQ_SINGLE, length]) + payload
     return packet + bytes([calculate_checksum(packet)])
+
 
 def validate_response(data: bytes) -> bool:
     """Validate response checksum."""
@@ -258,16 +263,22 @@ class MeRGBWDevice:
         # Parse brightness - format varies by device type
         if self._state.device_type in TWO_BYTE_BRIGHTNESS_TYPES:
             # Types 1, 2, 4: 2-byte brightness at bytes 5-6 (big-endian)
-            # Formula: (value / 10) - 5
+            # Type 2: value / 10
+            # Types 1 and 4: (value / 10) - 5
             if len(response) >= 7:
                 brightness_raw = (response[5] << 8) | response[6]
-                self._state.brightness = (brightness_raw // 10) - 5
+
+                if self._state.device_type == 2:
+                    self._state.brightness = brightness_raw // 10
+                else:
+                    self._state.brightness = (brightness_raw // 10) - 5
         else:
             # Types 3, 5, 6, 7, 8: Likely 1-byte brightness at byte 5
             # Formula: value - 5 (mirrors the command format)
             if len(response) >= 6:
                 brightness_raw = response[5]
                 self._state.brightness = brightness_raw - 5
+
         self._state.brightness = max(0, min(100, self._state.brightness))
 
         # Parse LED count for addressable devices (bytes 15-16)
@@ -326,22 +337,42 @@ class MeRGBWDevice:
         """Set brightness (0-100)."""
         brightness = max(0, min(100, brightness))
 
-        # Try 1-byte format first (types 6, 7, 8)
-        payload_1byte = bytes([brightness + 5])
-        _LOGGER.debug("Setting brightness %d%% (1-byte): payload %s",
-                     brightness, payload_1byte.hex())
-        result = await self._send_command(CMD_SET_BRIGHTNESS, payload_1byte, wait_response=False)
+        if self._state.device_type == 2:
+            # Type 2: use only the 2-byte brightness command.
+            # The tested RGB Line controller uses a range of 0-1000
+            # without the +5 offset.
+            # The original offset caused color distortion above 95%.
+            value = brightness * 10
+            payload = value.to_bytes(2, "big")
 
-        # Also try 2-byte format (types 1, 2, 4)
-        value = (brightness + 5) * 10
-        payload_2byte = bytes([(value >> 8) & 0xFF, value & 0xFF])
-        _LOGGER.debug("Setting brightness %d%% (2-byte): payload %s",
-                     brightness, payload_2byte.hex())
-        await self._send_command(CMD_SET_BRIGHTNESS, payload_2byte, wait_response=False)
+            result = await self._send_command(
+                CMD_SET_BRIGHTNESS,
+                payload,
+                wait_response=False
+            )
+        else:
+            # Preserve the original brightness behavior for other types.
+            payload_1byte = bytes([brightness + 5])
+
+            result = await self._send_command(
+                CMD_SET_BRIGHTNESS,
+                payload_1byte,
+                wait_response=False
+            )
+
+            value = (brightness + 5) * 10
+            payload_2byte = value.to_bytes(2, "big")
+
+            await self._send_command(
+                CMD_SET_BRIGHTNESS,
+                payload_2byte,
+                wait_response=False
+            )
 
         if result is not None:
             self._state.brightness = brightness
             return True
+
         return False
 
     async def turn_on(self, brightness: int | None = None, rgb: tuple[int, int, int] | None = None) -> bool:
